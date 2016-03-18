@@ -31,18 +31,30 @@ bl_info = {
 
 
 class UnhideObject(bpy.types.Operator):
-    """Unhide the object chosen in the Unhide menu"""
+    """Unhide the object or group of objects"""
     bl_idname = "object.show"
-    bl_label = "Show a specific object"
+    bl_label = "Show a specific object or group"
     bl_options = {"INTERNAL"}
 
-    objectName = bpy.props.StringProperty()
+    itemName = bpy.props.StringProperty()
+    type = bpy.props.StringProperty()
 
     def execute(self, context):
         
-        bpy.data.objects[self.objectName].hide = False
-        bpy.data.objects[self.objectName].select = True
-        bpy.context.scene.objects.active = bpy.data.objects[self.objectName]
+        if self.type == "Object":
+            
+            bpy.data.objects[self.itemName].hide = False
+            bpy.data.objects[self.itemName].select = True
+            bpy.context.scene.objects.active = bpy.data.objects[self.itemName]
+            
+        elif self.type == "Group":
+            
+            for object in bpy.data.groups[self.itemName].objects:
+                
+                if object.hide:
+                
+                    object.hide = False
+                    object.select = True
         
         return {'FINISHED'}
 
@@ -55,19 +67,51 @@ class UnHideMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         
-        row = layout.row()
-        row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+                       
+        hiddenObjects = [object for object in bpy.context.scene.objects if object.hide]
         
         row = layout.row()
-        row.label(text="Hidden objects:")
+        if len(hiddenObjects) > 0:
+            row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+        else:
+            row.label(text="No hidden objects or groups")
         
-        hiddenObjects = (object for object in bpy.context.scene.objects if object.hide)
+        #Possible, but not very readable
+        #hiddenGroups = [group.name for hiddenObject in hiddenObjects if hiddenObject.name in group.objects and group.name not in hiddenGroups]
         
-        for hiddenObject in hiddenObjects:
-                        
-            row = layout.row()
-            row.operator("object.show", text=hiddenObject.name, icon="OUTLINER_OB_"+hiddenObject.type).objectName = hiddenObject.name
+        hiddenGroups = []
+                
+        for group in bpy.data.groups:
             
+            for hiddenObject in hiddenObjects:
+
+                if hiddenObject.name in group.objects and group.name not in hiddenGroups:
+                    
+                    hiddenGroups.append(group.name)
+                            
+
+        if len(hiddenGroups) > 0:            
+            row = layout.row()
+            row.label(text="Hidden groups:")
+        
+
+        for hiddenGroup in hiddenGroups:
+            row = layout.row()
+            operator = row.operator("object.show", text=hiddenGroup, icon="GROUP")
+            operator.itemName = hiddenGroup
+            operator.type = "Group"
+
+        
+        if len(hiddenObjects) > 0:
+            row = layout.row()
+            row.label(text="Hidden objects:")
+
+                
+        for hiddenObject in hiddenObjects: 
+            row = layout.row()
+            operator = row.operator("object.show", text=hiddenObject.name, icon="OUTLINER_OB_"+hiddenObject.type)
+            operator.itemName = hiddenObject.name
+            operator.type = "Object"
 
 
 keymaps = []
