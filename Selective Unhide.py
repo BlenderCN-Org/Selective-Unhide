@@ -30,6 +30,73 @@ bl_info = {
 
 
 
+def getHiddenObjects():
+    
+    return [object for object in bpy.context.scene.objects if object.hide]
+
+
+
+def getHiddenGroups():
+    
+    #Possible, but not very readable
+    #hiddenGroups = [group.name for hiddenObject in hiddenObjects if hiddenObject.name in group.objects and group.name not in hiddenGroups]
+    
+    hiddenObjects = getHiddenObjects()
+    
+    hiddenGroups = []
+                    
+    for group in bpy.data.groups:
+        
+        for hiddenObject in hiddenObjects:
+
+            if hiddenObject.name in group.objects and group not in hiddenGroups:
+                
+                hiddenGroups.append(group)
+                
+    return hiddenGroups
+    
+
+
+def getHiddenItems(scene, context):
+        
+    hiddenGroups = [(item.name, item.name, "Group") for item in getHiddenGroups()]
+    
+    hiddenObjects = [(item.name, item.name, "Object") for item in getHiddenObjects()]
+
+    return hiddenObjects + hiddenGroups
+
+
+
+class UnhideSearch(bpy.types.Operator):
+    """Search through a list of hidden items"""
+    bl_idname = "object.unhide_search"
+    bl_label = "Hidden Items"
+    bl_property = "hiddenItems"
+
+    hiddenItems = bpy.props.EnumProperty(name="Hidden Items", description="Holds a list of the hidden items", items=getHiddenItems)
+
+    def execute(self, context):
+        
+        allHiddenItems = getHiddenItems(context.scene, context)
+        
+        for item in allHiddenItems:
+            
+            if item[0] == self.hiddenItems:
+                
+                itemType = item[2]
+                                                  
+        bpy.ops.object.show(type=itemType, itemName=self.hiddenItems)
+            
+        return {'FINISHED'}
+
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.invoke_search_popup(self)
+        return {'FINISHED'}
+
+
+
 class UnhideObject(bpy.types.Operator):
     """Unhide the object or group of objects"""
     bl_idname = "object.show"
@@ -66,30 +133,21 @@ class UnHideMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
-        
+        layout.operator_context = 'INVOKE_DEFAULT'
                        
-        hiddenObjects = [object for object in bpy.context.scene.objects if object.hide]
+        hiddenObjects = getHiddenObjects()
+        hiddenGroups = getHiddenGroups()       
         
         row = layout.row()
         if len(hiddenObjects) > 0:
             row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+            row = layout.row()
+            operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
+            
         else:
             row.label(text="No hidden objects or groups")
-        
-        #Possible, but not very readable
-        #hiddenGroups = [group.name for hiddenObject in hiddenObjects if hiddenObject.name in group.objects and group.name not in hiddenGroups]
-        
-        hiddenGroups = []
                 
-        for group in bpy.data.groups:
-            
-            for hiddenObject in hiddenObjects:
-
-                if hiddenObject.name in group.objects and group.name not in hiddenGroups:
-                    
-                    hiddenGroups.append(group.name)
-                            
-
+                
         if len(hiddenGroups) > 0:            
             row = layout.row()
             row.label(text="Hidden groups:")
@@ -97,8 +155,8 @@ class UnHideMenu(bpy.types.Menu):
 
         for hiddenGroup in hiddenGroups:
             row = layout.row()
-            operator = row.operator("object.show", text=hiddenGroup, icon="GROUP")
-            operator.itemName = hiddenGroup
+            operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP")
+            operator.itemName = hiddenGroup.name
             operator.type = "Group"
 
         
@@ -117,8 +175,9 @@ class UnHideMenu(bpy.types.Menu):
 keymaps = []
                   
 def register():
+        
     bpy.utils.register_module(__name__)    
-            
+                
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
     
