@@ -105,17 +105,17 @@ class UnhideObject(bpy.types.Operator):
 
     itemName = bpy.props.StringProperty()
     type = bpy.props.StringProperty()
-    all = bpy.props.BoolProperty(default=False)
+    hideAll = bpy.props.BoolProperty(default=False)
 
     def execute(self, context):
         
-        if self.type == "Object" and not self.all:
+        if self.type == "Object" and not self.hideAll:
             
             bpy.data.objects[self.itemName].hide = False
             bpy.data.objects[self.itemName].select = True
             bpy.context.scene.objects.active = bpy.data.objects[self.itemName]
         
-        elif self.type == "Object" and self.all:
+        elif self.hideAll:
             
             for object in getHiddenObjects():
                                 
@@ -139,7 +139,7 @@ class UnhideObject(bpy.types.Operator):
 
 
 class UnHideAllByTypeMenu(bpy.types.Menu):
-    bl_label = "Unhide"
+    bl_label = "Unhide all by type"
     bl_idname = "view3d.unhide_all_by_type_menu"
 
     def draw(self, context):
@@ -154,15 +154,14 @@ class UnHideAllByTypeMenu(bpy.types.Menu):
                 row = layout.row()
                 operator = row.operator("object.show", text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)
                 operator.itemName = object.type
-                operator.type = "Object"
-                operator.all = True 
+                operator.hideAll = True 
                 
                 objectTypes.append(object.type)
         
         
 
 class UnHideByTypeMenu(bpy.types.Menu):
-    bl_label = "Unhide"
+    bl_label = "Unhide by type"
     bl_idname = "view3d.unhide_by_type_menu"
 
     def draw(self, context):
