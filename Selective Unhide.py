@@ -105,14 +105,25 @@ class UnhideObject(bpy.types.Operator):
 
     itemName = bpy.props.StringProperty()
     type = bpy.props.StringProperty()
+    all = bpy.props.BoolProperty(default=False)
 
     def execute(self, context):
         
-        if self.type == "Object":
+        if self.type == "Object" and not self.all:
             
             bpy.data.objects[self.itemName].hide = False
             bpy.data.objects[self.itemName].select = True
             bpy.context.scene.objects.active = bpy.data.objects[self.itemName]
+        
+        elif self.type == "Object" and self.all:
+            
+            for object in getHiddenObjects():
+                                
+                if object.type == self.itemName:
+                    
+                    object.hide = False
+                    object.select = True
+                    bpy.context.scene.objects.active = object
             
         elif self.type == "Group":
             
@@ -126,6 +137,29 @@ class UnhideObject(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
+class UnHideAllByTypeMenu(bpy.types.Menu):
+    bl_label = "Unhide"
+    bl_idname = "view3d.unhide_all_by_type_menu"
+
+    def draw(self, context):
+        layout = self.layout
+
+        objectTypes = []
+            
+        for object in getHiddenObjects():
+                            
+            if object.type not in objectTypes:
+                
+                row = layout.row()
+                operator = row.operator("object.show", text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)
+                operator.itemName = object.type
+                operator.type = "Object"
+                operator.all = True 
+                
+                objectTypes.append(object.type)
+        
+        
 
 class UnHideByTypeMenu(bpy.types.Menu):
     bl_label = "Unhide"
@@ -174,6 +208,8 @@ class UnHideMenu(bpy.types.Menu):
         row = col.row()
         if len(hiddenObjects) > 0:
             row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+            row = col.row()
+            row.menu(UnHideAllByTypeMenu.bl_idname, text="UnHide all by type", icon="FILTER")
             row = col.row()
             operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
             
