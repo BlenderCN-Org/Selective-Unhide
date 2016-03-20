@@ -105,17 +105,17 @@ class UnhideObject(bpy.types.Operator):
 
     itemName = bpy.props.StringProperty()
     type = bpy.props.StringProperty()
-    hideAll = bpy.props.BoolProperty(default=False)
+    unHideAll = bpy.props.BoolProperty(default=False)
 
     def execute(self, context):
         
-        if self.type == "Object" and not self.hideAll:
+        if self.type == "Object" and not self.unHideAll:
             
             bpy.data.objects[self.itemName].hide = False
             bpy.data.objects[self.itemName].select = True
             bpy.context.scene.objects.active = bpy.data.objects[self.itemName]
         
-        elif self.hideAll:
+        elif self.unHideAll:
             
             for object in getHiddenObjects():
                                 
@@ -154,7 +154,7 @@ class UnHideAllByTypeMenu(bpy.types.Menu):
                 row = layout.row()
                 operator = row.operator("object.show", text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)
                 operator.itemName = object.type
-                operator.hideAll = True 
+                operator.unHideAll = True 
                 
                 objectTypes.append(object.type)
         
