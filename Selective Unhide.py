@@ -127,6 +127,36 @@ class UnhideObject(bpy.types.Operator):
 
 
 
+class UnHideByTypeMenu(bpy.types.Menu):
+    bl_label = "Unhide"
+    bl_idname = "view3d.unhide_by_type_menu"
+
+    def draw(self, context):
+        layout = self.layout
+        split = layout.split()
+        
+        col = split.column()
+        
+#        rowCount = 0
+#        columnCount = 0
+#        maxRows = 21
+#        maxColumns = 6
+        
+        for hiddenObject in getHiddenObjects():
+#            if rowCount == maxRows and columnCount < maxColumns:
+#                col = split.column()
+#                rowCount = 0 
+#                columnCount +=1
+                
+            if hiddenObject.type == context.object.type:
+                row = col.row()                        
+                operator = row.operator("object.show", text=hiddenObject.name)
+                operator.itemName = hiddenObject.name
+                operator.type = "Object" 
+#                rowCount+=1        
+        
+
+
 class UnHideMenu(bpy.types.Menu):
     bl_label = "Unhide"
     bl_idname = "view3d.unhide_menu"
@@ -134,43 +164,63 @@ class UnHideMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         layout.operator_context = 'INVOKE_DEFAULT'
-                       
-        hiddenObjects = getHiddenObjects()
-        hiddenGroups = getHiddenGroups()       
+        split = layout.split()
+                        
+        col = split.column()
         
-        row = layout.row()
+        hiddenObjects = getHiddenObjects()
+        hiddenGroups = getHiddenGroups()     
+        
+        row = col.row()
         if len(hiddenObjects) > 0:
             row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
-            row = layout.row()
+            row = col.row()
             operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
             
         else:
             row.label(text="No hidden objects or groups")
                 
                 
-        if len(hiddenGroups) > 0:            
-            row = layout.row()
+        if len(hiddenGroups) > 0:
+            col.separator()            
+            row = col.row()
             row.label(text="Hidden groups:")
-        
-
+            
+#        rowCount = 3
+#        columnCount = 0
+#        maxRows = 21
+#        maxColumns = 6
+            
         for hiddenGroup in hiddenGroups:
-            row = layout.row()
+#            if rowCount == maxRows and columnCount < maxColumns:
+#                col = split.column()
+#                rowCount = -2
+#                columnCount +=1
+                
+            row = col.row()
             operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP")
             operator.itemName = hiddenGroup.name
             operator.type = "Group"
-
+            #rowCount +=1
+      
+        col.separator()
         
         if len(hiddenObjects) > 0:
-            row = layout.row()
-            row.label(text="Hidden objects:")
+            row = col.row()
+            row.label(text="Hidden objects by type:")
 
-                
-        for hiddenObject in hiddenObjects: 
-            row = layout.row()
-            operator = row.operator("object.show", text=hiddenObject.name, icon="OUTLINER_OB_"+hiddenObject.type)
-            operator.itemName = hiddenObject.name
-            operator.type = "Object"
+        objectTypes = []
+        
+        for object in hiddenObjects:
+                            
+            if object.type not in objectTypes:
+                                
+                row = layout.row()
+                row.context_pointer_set("object", object)    
+                row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
 
+                objectTypes.append(object.type)
+                    
 
 keymaps = []
                   
