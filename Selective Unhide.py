@@ -30,6 +30,32 @@ bl_info = {
 
 
 
+def getHiddenBones():
+    
+    return [bone for bone in bpy.context.active_object.data.edit_bones if bone.hide] 
+
+
+
+def getHiddenBoneGroups():
+    
+    hiddenBones = getHiddenBones()
+    
+    hiddenBoneGroups = []
+    
+    armature = bpy.context.active_object
+    
+    for boneGroup in armature.pose.bone_groups:
+        
+        for hiddenBone in hiddenBones:
+            
+            if armature.pose.bones[hiddenBone.name].bone_group == boneGroup and boneGroup not in hiddenBoneGroups:
+                
+                hiddenBoneGroups.append(boneGroup)        
+    
+    return hiddenBoneGroups            
+
+
+
 def getHiddenObjects():
     
     return [object for object in bpy.context.scene.objects if object.hide]
@@ -58,10 +84,18 @@ def getHiddenGroups():
 
 
 def getHiddenItems(scene, context):
-        
-    hiddenGroups = [(item.name, item.name, "Group") for item in getHiddenGroups()]
     
-    hiddenObjects = [(item.name, item.name, "Object") for item in getHiddenObjects()]
+    if bpy.context.mode == "OBJECT":
+        
+        hiddenGroups = [(item.name, item.name, "Group") for item in getHiddenGroups()]
+        
+        hiddenObjects = [(item.name, item.name, "Object") for item in getHiddenObjects()]
+
+    elif bpy.context.mode == "EDIT_ARMATURE":
+        
+        hiddenGroups = [(item.name, item.name, "Bone Group") for item in getHiddenBoneGroups()]
+        
+        hiddenObjects = [(item.name, item.name, "Bone") for item in getHiddenBones()]
 
     return hiddenObjects + hiddenGroups
 
@@ -85,7 +119,14 @@ class UnhideSearch(bpy.types.Operator):
                 
                 itemType = item[2]
                                                   
-        bpy.ops.object.show(type=itemType, itemName=self.hiddenItems)
+        if bpy.context.mode == "OBJECT":
+                
+            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems)
+            
+        elif bpy.context.mode == "EDIT_ARMATURE":
+            
+            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)
+            
             
         return {'FINISHED'}
 
@@ -106,6 +147,7 @@ class UnhideObject(bpy.types.Operator):
     itemName = bpy.props.StringProperty()
     type = bpy.props.StringProperty()
     unHideAll = bpy.props.BoolProperty(default=False)
+    armature = bpy.props.StringProperty()
 
     def execute(self, context):
         
@@ -133,6 +175,24 @@ class UnhideObject(bpy.types.Operator):
                 
                     object.hide = False
                     object.select = True
+                    
+        elif self.type == "Bone":
+            
+            armature = bpy.data.objects[self.armature].data
+            armature.edit_bones[self.itemName].hide = False
+            armature.edit_bones[self.itemName].select = True
+            armature.edit_bones.active = armature.edit_bones[self.itemName]
+            
+        elif self.type == "Bone Group":
+            
+            armature = bpy.data.objects[self.armature]
+                        
+            for bone in getHiddenBones():
+            
+                if armature.pose.bones[bone.name].bone_group.name == self.itemName:
+                
+                    bone.hide = False
+                    bone.select = True
         
         return {'FINISHED'}
 
@@ -170,23 +230,25 @@ class UnHideByTypeMenu(bpy.types.Menu):
         
         col = split.column()
         
-#        rowCount = 0
-#        columnCount = 0
-#        maxRows = 21
-#        maxColumns = 6
+        if bpy.context.mode == "OBJECT":
         
-        for hiddenObject in getHiddenObjects():
-#            if rowCount == maxRows and columnCount < maxColumns:
-#                col = split.column()
-#                rowCount = 0 
-#                columnCount +=1
+            for hiddenObject in getHiddenObjects():
+            
+                if hiddenObject.type == context.object.type:
+                    row = col.row()                        
+                    operator = row.operator("object.show", text=hiddenObject.name)
+                    operator.itemName = hiddenObject.name
+                    operator.type = "Object"
+                    
+        elif bpy.context.mode == "EDIT_ARMATURE":
                 
-            if hiddenObject.type == context.object.type:
-                row = col.row()                        
-                operator = row.operator("object.show", text=hiddenObject.name)
-                operator.itemName = hiddenObject.name
-                operator.type = "Object" 
-#                rowCount+=1        
+            for hiddenBone in getHiddenBones():
+                
+                row = col.row()
+                operator = row.operator("object.show", text=hiddenBone.name)
+                operator.itemName = hiddenBone.name
+                operator.type = "Bone"
+                operator.armature = bpy.context.active_object.name   
         
 
 
@@ -201,19 +263,43 @@ class UnHideMenu(bpy.types.Menu):
                         
         col = split.column()
         
-        hiddenObjects = getHiddenObjects()
-        hiddenGroups = getHiddenGroups()     
+        if bpy.context.mode == "OBJECT":
+                                
+            hiddenObjects = getHiddenObjects()
+            hiddenGroups = getHiddenGroups()     
+            
+        elif bpy.context.mode == "EDIT_ARMATURE":
+            
+            hiddenObjects = getHiddenBones()
+            hiddenGroups = getHiddenBoneGroups()
+            
         
         row = col.row()
         if len(hiddenObjects) > 0:
-            row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
-            row = col.row()
-            row.menu(UnHideAllByTypeMenu.bl_idname, text="UnHide all by type", icon="FILTER")
-            row = col.row()
-            operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
+
+            if bpy.context.mode == "OBJECT":
+                
+                row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+                row = col.row()
+                row.menu(UnHideAllByTypeMenu.bl_idname, text="UnHide all by type", icon="FILTER")
+                row = col.row()
+                operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
             
+            elif bpy.context.mode == "EDIT_ARMATURE":
+                
+                row.operator("armature.reveal", text="Unhide all bones", icon="RESTRICT_VIEW_OFF")
+                row = col.row()
+                operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")    
+                        
         else:
-            row.label(text="No hidden objects or groups")
+            
+            if bpy.context.mode == "OBJECT":
+            
+                row.label(text="No hidden objects or groups")
+            
+            elif bpy.context.mode == "EDIT_ARMATURE":
+                
+                row.label(text="No hidden bones or bone groups")
                 
                 
         if len(hiddenGroups) > 0:
@@ -221,41 +307,49 @@ class UnHideMenu(bpy.types.Menu):
             row = col.row()
             row.label(text="Hidden groups:")
             
-#        rowCount = 3
-#        columnCount = 0
-#        maxRows = 21
-#        maxColumns = 6
-            
+
         for hiddenGroup in hiddenGroups:
-#            if rowCount == maxRows and columnCount < maxColumns:
-#                col = split.column()
-#                rowCount = -2
-#                columnCount +=1
                 
             row = col.row()
             operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP")
             operator.itemName = hiddenGroup.name
-            operator.type = "Group"
-            #rowCount +=1
+            
+            if bpy.context.mode == "OBJECT":
+                    
+                operator.type = "Group"
+                
+            elif bpy.context.mode == "EDIT_ARMATURE":
+            
+                operator.type = "Bone Group"
+                operator.armature = bpy.context.active_object.name
+
       
         col.separator()
         
         if len(hiddenObjects) > 0:
             row = col.row()
             row.label(text="Hidden objects by type:")
-
-        objectTypes = []
         
-        for object in hiddenObjects:
-                            
-            if object.type not in objectTypes:
-                                
-                row = layout.row()
-                row.context_pointer_set("object", object)    
-                row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
+        if bpy.context.mode == "OBJECT":
 
-                objectTypes.append(object.type)
+            objectTypes = []
+            
+            for object in hiddenObjects:
+                                
+                if object.type not in objectTypes:
+                                    
+                    row = layout.row()
+                    row.context_pointer_set("object", object)    
+                    row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
+
+                    objectTypes.append(object.type)
                     
+        elif bpy.context.mode == "EDIT_ARMATURE":
+                
+            row = layout.row()
+            row.menu(UnHideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
+                
+            
 
 keymaps = []
                   
@@ -264,11 +358,15 @@ def register():
     bpy.utils.register_module(__name__)    
                 
     wm = bpy.context.window_manager
+
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
-    
     kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
     kmi.properties.name = 'view3d.unhide_menu'
+    keymaps.append((km, kmi))
     
+    km = wm.keyconfigs.addon.keymaps.new(name='Armature', space_type='EMPTY')
+    kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
+    kmi.properties.name = 'view3d.unhide_menu'
     keymaps.append((km, kmi))
         
 
