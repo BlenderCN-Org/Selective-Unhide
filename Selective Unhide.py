@@ -403,31 +403,30 @@ class UnHideMenu(bpy.types.Menu):
                 operator.type = "Pose Bone Group"
                 operator.armature = bpy.context.active_object.name
 
-      
-        col.separator()
-        
+              
         if len(hiddenObjects) > 0:
+            col.separator()
             row = col.row()
             row.label(text="Hidden objects by type:")
         
-        if bpy.context.mode == "OBJECT":
+            if bpy.context.mode == "OBJECT":
 
-            objectTypes = []
-            
-            for object in hiddenObjects:
-                                
-                if object.type not in objectTypes:
-                                    
-                    row = layout.row()
-                    row.context_pointer_set("object", object)    
-                    row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
-
-                    objectTypes.append(object.type)
-                    
-        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
+                objectTypes = []
                 
-            row = layout.row()
-            row.menu(UnHideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
+                for object in hiddenObjects:
+                                    
+                    if object.type not in objectTypes:
+                                        
+                        row = layout.row()
+                        row.context_pointer_set("object", object)    
+                        row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
+
+                        objectTypes.append(object.type)
+                        
+            elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
+                    
+                row = layout.row()
+                row.menu(UnHideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
                 
             
 
