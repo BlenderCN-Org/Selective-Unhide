@@ -251,7 +251,7 @@ class UnhideObject(bpy.types.Operator):
 
 
 
-class UnHideAllByTypeMenu(bpy.types.Menu):
+class UnhideAllByTypeMenu(bpy.types.Menu):
     bl_label = "Unhide all by type"
     bl_idname = "view3d.unhide_all_by_type_menu"
 
@@ -273,7 +273,7 @@ class UnHideAllByTypeMenu(bpy.types.Menu):
         
         
 
-class UnHideByTypeMenu(bpy.types.Menu):
+class UnhideByTypeMenu(bpy.types.Menu):
     bl_label = "Unhide by type"
     bl_idname = "view3d.unhide_by_type_menu"
 
@@ -316,7 +316,7 @@ class UnHideByTypeMenu(bpy.types.Menu):
         
 
 
-class UnHideMenu(bpy.types.Menu):
+class UnhideMenu(bpy.types.Menu):
     bl_label = "Unhide"
     bl_idname = "view3d.unhide_menu"
 
@@ -350,7 +350,7 @@ class UnHideMenu(bpy.types.Menu):
                 
                 row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
                 row = col.row()
-                row.menu(UnHideAllByTypeMenu.bl_idname, text="UnHide all by type", icon="FILTER")
+                row.menu(UnhideAllByTypeMenu.bl_idname, text="Unhide all by type", icon="FILTER")
                 row = col.row()
                 operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")
             
@@ -419,14 +419,14 @@ class UnHideMenu(bpy.types.Menu):
                                         
                         row = layout.row()
                         row.context_pointer_set("object", object)    
-                        row.menu(UnHideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
+                        row.menu(UnhideByTypeMenu.bl_idname, text=object.type.lower().capitalize(), icon="OUTLINER_OB_"+object.type)      
 
                         objectTypes.append(object.type)
                         
             elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
                     
                 row = layout.row()
-                row.menu(UnHideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
+                row.menu(UnhideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
                 
             
 
