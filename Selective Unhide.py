@@ -98,16 +98,10 @@ def getHiddenItems(scene, context):
         hiddenObjects = [(item.name, item.name, "Object") for item in getHiddenObjects()]
 
     elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
+                
+        hiddenGroups = [(item.name, item.name, bpy.context.mode+" Bone Group") for item in getHiddenBoneGroups(bpy.context.mode)]
         
-        boneTypePrefix = ""
-        
-        if bpy.context.mode == "POSE":
-            
-            boneTypePrefix = "Pose "
-        
-        hiddenGroups = [(item.name, item.name, boneTypePrefix+"Bone Group") for item in getHiddenBoneGroups(bpy.context.mode)]
-        
-        hiddenObjects = [(item.name, item.name, boneTypePrefix+"Bone") for item in getHiddenBones(bpy.context.mode)]
+        hiddenObjects = [(item.name, item.name, bpy.context.mode+" Bone") for item in getHiddenBones(bpy.context.mode)]
 
     return hiddenObjects + hiddenGroups
 
@@ -187,14 +181,14 @@ class UnhideObject(bpy.types.Operator):
                     object.hide = False
                     object.select = True
                     
-        elif self.type == "Bone":
+        elif self.type == "EDIT_ARMATURE Bone":
             
             armature = bpy.data.objects[self.armature].data
             armature.edit_bones[self.itemName].hide = False
             armature.edit_bones[self.itemName].select = True
             armature.edit_bones.active = armature.edit_bones[self.itemName]
-            
-        elif self.type == "Bone Group":
+                 
+        elif self.type == "EDIT_ARMATURE Bone Group":
             
             armature = bpy.data.objects[self.armature]
                         
@@ -205,14 +199,14 @@ class UnhideObject(bpy.types.Operator):
                     bone.hide = False
                     bone.select = True
                     
-        elif self.type == "Pose Bone":
+        elif self.type == "POSE Bone":
             
             armature = bpy.data.objects[self.armature].data
             armature.bones[self.itemName].hide = False
             armature.bones[self.itemName].select = True
             armature.bones.active = armature.bones[self.itemName]
             
-        elif self.type == "Pose Bone Group":
+        elif self.type == "POSE Bone Group":
             
             armature = bpy.data.objects[self.armature]
                         
@@ -277,12 +271,7 @@ class UnhideByTypeMenu(bpy.types.Menu):
                 row = col.row()
                 operator = row.operator("object.show", text=hiddenBone.name)
                 operator.itemName = hiddenBone.name
-                
-                if bpy.context.mode == "EDIT_ARMATURE":    
-                    operator.type = "Bone"
-                elif bpy.context.mode == "POSE":
-                    operator.type = "Pose Bone"
-                    
+                operator.type = bpy.context.mode+" Bone"
                 operator.armature = bpy.context.active_object.name
 
                 
@@ -358,16 +347,11 @@ class UnhideMenu(bpy.types.Menu):
                     
                 operator.type = "Group"
                 
-            elif bpy.context.mode == "EDIT_ARMATURE":
+            elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
             
-                operator.type = "Bone Group"
+                operator.type = bpy.context.mode+" Bone Group"
                 operator.armature = bpy.context.active_object.name
                 
-            elif bpy.context.mode == "POSE":
-            
-                operator.type = "Pose Bone Group"
-                operator.armature = bpy.context.active_object.name
-
               
         if len(hiddenObjects) > 0:
             col.separator()
