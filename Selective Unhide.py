@@ -340,15 +340,17 @@ class UnhideMenu(bpy.types.Menu):
         for hiddenGroup in hiddenGroups:
                 
             row = col.row()
-            operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP")
-            operator.itemName = hiddenGroup.name
-            
+                        
             if bpy.context.mode == "OBJECT":
-                    
+                
+                operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP")
+                operator.itemName = hiddenGroup.name    
                 operator.type = "Group"
                 
             elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
             
+                operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP_BONE")
+                operator.itemName = hiddenGroup.name    
                 operator.type = bpy.context.mode+" Bone Group"
                 operator.armature = bpy.context.active_object.name
                 
