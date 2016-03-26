@@ -29,6 +29,31 @@ bl_info = {
     "category": "3D View"}
 
 
+def getHiddenPoseBones():
+    
+    return [bone for bone in bpy.context.active_object.data.bones if bone.hide]
+
+
+
+def getHiddenPoseBoneGroups():
+
+    hiddenPoseBones = getHiddenPoseBones()
+    
+    hiddenPoseBoneGroups = []
+    
+    armature = bpy.context.active_object
+    
+    for poseBoneGroup in armature.pose.bone_groups:
+        
+        for hiddenPoseBone in hiddenPoseBones:
+            
+            if armature.pose.bones[hiddenPoseBone.name].bone_group == poseBoneGroup and poseBoneGroup not in hiddenPoseBoneGroups:
+                
+                hiddenPoseBoneGroups.append(poseBoneGroup)
+                
+    return hiddenPoseBoneGroups
+
+
 
 def getHiddenBones():
     
@@ -97,6 +122,12 @@ def getHiddenItems(scene, context):
         
         hiddenObjects = [(item.name, item.name, "Bone") for item in getHiddenBones()]
 
+    elif bpy.context.mode == "POSE":
+        
+        hiddenGroups = [(item.name, item.name, "Pose Bone Group") for item in getHiddenPoseBoneGroups()]
+        
+        hiddenObjects = [(item.name, item.name, "Pose Bone") for item in getHiddenPoseBones()]
+
     return hiddenObjects + hiddenGroups
 
 
@@ -127,6 +158,9 @@ class UnhideSearch(bpy.types.Operator):
             
             bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)
             
+        elif bpy.context.mode == "POSE":
+            
+            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)            
             
         return {'FINISHED'}
 
@@ -193,6 +227,25 @@ class UnhideObject(bpy.types.Operator):
                 
                     bone.hide = False
                     bone.select = True
+                    
+        elif self.type == "Pose Bone":
+            
+            armature = bpy.data.objects[self.armature].data
+            armature.bones[self.itemName].hide = False
+            armature.bones[self.itemName].select = True
+            armature.bones.active = armature.bones[self.itemName]
+            
+        elif self.type == "Pose Bone Group":
+            
+            armature = bpy.data.objects[self.armature]
+                        
+            for bone in getHiddenPoseBones():
+            
+                if armature.pose.bones[bone.name].bone_group.name == self.itemName:
+                
+                    bone.hide = False
+                    bone.select = True            
+        
         
         return {'FINISHED'}
 
@@ -248,7 +301,18 @@ class UnHideByTypeMenu(bpy.types.Menu):
                 operator = row.operator("object.show", text=hiddenBone.name)
                 operator.itemName = hiddenBone.name
                 operator.type = "Bone"
-                operator.armature = bpy.context.active_object.name   
+                operator.armature = bpy.context.active_object.name
+                
+        elif bpy.context.mode == "POSE":
+                
+            for hiddenBone in getHiddenPoseBones():
+                
+                row = col.row()
+                operator = row.operator("object.show", text=hiddenBone.name)
+                operator.itemName = hiddenBone.name
+                operator.type = "Pose Bone"
+                operator.armature = bpy.context.active_object.name
+                
         
 
 
@@ -273,6 +337,11 @@ class UnHideMenu(bpy.types.Menu):
             hiddenObjects = getHiddenBones()
             hiddenGroups = getHiddenBoneGroups()
             
+        elif bpy.context.mode == "POSE":
+            
+            hiddenObjects = getHiddenPoseBones()
+            hiddenGroups = getHiddenPoseBoneGroups()
+            
         
         row = col.row()
         if len(hiddenObjects) > 0:
@@ -290,6 +359,12 @@ class UnHideMenu(bpy.types.Menu):
                 row.operator("armature.reveal", text="Unhide all bones", icon="RESTRICT_VIEW_OFF")
                 row = col.row()
                 operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")    
+                
+            elif bpy.context.mode == "POSE":
+                
+                row.operator("pose.reveal", text="Unhide all bones", icon="RESTRICT_VIEW_OFF")
+                row = col.row()
+                operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")    
                         
         else:
             
@@ -297,7 +372,7 @@ class UnHideMenu(bpy.types.Menu):
             
                 row.label(text="No hidden objects or groups")
             
-            elif bpy.context.mode == "EDIT_ARMATURE":
+            elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
                 
                 row.label(text="No hidden bones or bone groups")
                 
@@ -322,6 +397,11 @@ class UnHideMenu(bpy.types.Menu):
             
                 operator.type = "Bone Group"
                 operator.armature = bpy.context.active_object.name
+                
+            elif bpy.context.mode == "POSE":
+            
+                operator.type = "Pose Bone Group"
+                operator.armature = bpy.context.active_object.name
 
       
         col.separator()
@@ -344,7 +424,7 @@ class UnHideMenu(bpy.types.Menu):
 
                     objectTypes.append(object.type)
                     
-        elif bpy.context.mode == "EDIT_ARMATURE":
+        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
                 
             row = layout.row()
             row.menu(UnHideByTypeMenu.bl_idname, text="Bone", icon="BONE_DATA")
@@ -365,6 +445,11 @@ def register():
     keymaps.append((km, kmi))
     
     km = wm.keyconfigs.addon.keymaps.new(name='Armature', space_type='EMPTY')
+    kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
+    kmi.properties.name = 'view3d.unhide_menu'
+    keymaps.append((km, kmi))
+    
+    km = wm.keyconfigs.addon.keymaps.new(name='Pose', space_type='EMPTY')
     kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
     kmi.properties.name = 'view3d.unhide_menu'
     keymaps.append((km, kmi))
