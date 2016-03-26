@@ -7,6 +7,6 @@ Restores the default behaviour on disabling the add-on.
 
 ![Object Mode Menu](/Selective Unhide README images/Selective Unhide Object Mode Menu.PNG)
 
-**Unhide menu Armature Edit Mode:**
+**Unhide menu Armature Edit Mode and Pose Mode:**
 
 ![Armature Mode Menu](/Selective Unhide README images/Selective Unhide Armature Edit Mode Menu.PNG)
