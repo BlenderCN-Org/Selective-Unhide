@@ -29,49 +29,30 @@ bl_info = {
     "category": "3D View"}
 
 
-def getHiddenPoseBones():
-    
-    return [bone for bone in bpy.context.active_object.data.bones if bone.hide]
 
-
-
-def getHiddenPoseBoneGroups():
-
-    hiddenPoseBones = getHiddenPoseBones()
+def getHiddenBones(boneType):
     
-    hiddenPoseBoneGroups = []
-    
-    armature = bpy.context.active_object
-    
-    for poseBoneGroup in armature.pose.bone_groups:
+    if boneType == "EDIT_ARMATURE":
         
-        for hiddenPoseBone in hiddenPoseBones:
-            
-            if armature.pose.bones[hiddenPoseBone.name].bone_group == poseBoneGroup and poseBoneGroup not in hiddenPoseBoneGroups:
-                
-                hiddenPoseBoneGroups.append(poseBoneGroup)
-                
-    return hiddenPoseBoneGroups
-
-
-
-def getHiddenBones():
+        boneList = bpy.context.active_object.data.edit_bones
+        
+    elif boneType == "POSE":
+        
+        boneList = bpy.context.active_object.data.bones
     
-    return [bone for bone in bpy.context.active_object.data.edit_bones if bone.hide] 
+    return [bone for bone in boneList if bone.hide] 
 
 
 
-def getHiddenBoneGroups():
-    
-    hiddenBones = getHiddenBones()
-    
+def getHiddenBoneGroups(boneType):
+        
     hiddenBoneGroups = []
     
     armature = bpy.context.active_object
     
     for boneGroup in armature.pose.bone_groups:
         
-        for hiddenBone in hiddenBones:
+        for hiddenBone in getHiddenBones(boneType):
             
             if armature.pose.bones[hiddenBone.name].bone_group == boneGroup and boneGroup not in hiddenBoneGroups:
                 
@@ -116,17 +97,17 @@ def getHiddenItems(scene, context):
         
         hiddenObjects = [(item.name, item.name, "Object") for item in getHiddenObjects()]
 
-    elif bpy.context.mode == "EDIT_ARMATURE":
+    elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
         
-        hiddenGroups = [(item.name, item.name, "Bone Group") for item in getHiddenBoneGroups()]
+        boneTypePrefix = ""
         
-        hiddenObjects = [(item.name, item.name, "Bone") for item in getHiddenBones()]
-
-    elif bpy.context.mode == "POSE":
+        if bpy.context.mode == "POSE":
+            
+            boneTypePrefix = "Pose "
         
-        hiddenGroups = [(item.name, item.name, "Pose Bone Group") for item in getHiddenPoseBoneGroups()]
+        hiddenGroups = [(item.name, item.name, boneTypePrefix+"Bone Group") for item in getHiddenBoneGroups(bpy.context.mode)]
         
-        hiddenObjects = [(item.name, item.name, "Pose Bone") for item in getHiddenPoseBones()]
+        hiddenObjects = [(item.name, item.name, boneTypePrefix+"Bone") for item in getHiddenBones(bpy.context.mode)]
 
     return hiddenObjects + hiddenGroups
 
@@ -154,13 +135,9 @@ class UnhideSearch(bpy.types.Operator):
                 
             bpy.ops.object.show(type=itemType, itemName=self.hiddenItems)
             
-        elif bpy.context.mode == "EDIT_ARMATURE":
-            
-            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)
-            
-        elif bpy.context.mode == "POSE":
-            
-            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)            
+        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
+                        
+            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)        
             
         return {'FINISHED'}
 
@@ -221,7 +198,7 @@ class UnhideObject(bpy.types.Operator):
             
             armature = bpy.data.objects[self.armature]
                         
-            for bone in getHiddenBones():
+            for bone in getHiddenBones("EDIT_ARMATURE"):
             
                 if armature.pose.bones[bone.name].bone_group.name == self.itemName:
                 
@@ -239,7 +216,7 @@ class UnhideObject(bpy.types.Operator):
             
             armature = bpy.data.objects[self.armature]
                         
-            for bone in getHiddenPoseBones():
+            for bone in getHiddenBones("POSE"):
             
                 if armature.pose.bones[bone.name].bone_group.name == self.itemName:
                 
@@ -293,29 +270,23 @@ class UnhideByTypeMenu(bpy.types.Menu):
                     operator.itemName = hiddenObject.name
                     operator.type = "Object"
                     
-        elif bpy.context.mode == "EDIT_ARMATURE":
+        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
                 
-            for hiddenBone in getHiddenBones():
-                
-                row = col.row()
-                operator = row.operator("object.show", text=hiddenBone.name)
-                operator.itemName = hiddenBone.name
-                operator.type = "Bone"
-                operator.armature = bpy.context.active_object.name
-                
-        elif bpy.context.mode == "POSE":
-                
-            for hiddenBone in getHiddenPoseBones():
+            for hiddenBone in getHiddenBones(bpy.context.mode):
                 
                 row = col.row()
                 operator = row.operator("object.show", text=hiddenBone.name)
                 operator.itemName = hiddenBone.name
-                operator.type = "Pose Bone"
+                
+                if bpy.context.mode == "EDIT_ARMATURE":    
+                    operator.type = "Bone"
+                elif bpy.context.mode == "POSE":
+                    operator.type = "Pose Bone"
+                    
                 operator.armature = bpy.context.active_object.name
+
                 
         
-
-
 class UnhideMenu(bpy.types.Menu):
     bl_label = "Unhide"
     bl_idname = "view3d.unhide_menu"
@@ -332,17 +303,11 @@ class UnhideMenu(bpy.types.Menu):
             hiddenObjects = getHiddenObjects()
             hiddenGroups = getHiddenGroups()     
             
-        elif bpy.context.mode == "EDIT_ARMATURE":
+        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
             
-            hiddenObjects = getHiddenBones()
-            hiddenGroups = getHiddenBoneGroups()
-            
-        elif bpy.context.mode == "POSE":
-            
-            hiddenObjects = getHiddenPoseBones()
-            hiddenGroups = getHiddenPoseBoneGroups()
-            
-        
+            hiddenObjects = getHiddenBones(bpy.context.mode)
+            hiddenGroups = getHiddenBoneGroups(bpy.context.mode)
+                        
         row = col.row()
         if len(hiddenObjects) > 0:
 
