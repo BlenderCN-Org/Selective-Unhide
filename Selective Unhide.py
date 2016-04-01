@@ -30,6 +30,34 @@ bl_info = {
 
 
 
+def getHiddenVertices():
+    
+    object = bpy.context.active_object                
+        
+    object.update_from_editmode()
+    
+    return [vertex for vertex in object.data.vertices if vertex.hide]
+
+
+
+def getHiddenVertexGroups():
+            
+    object = bpy.context.active_object                
+                
+    hiddenVertexGroups = []
+                    
+    for hiddenVertex in getHiddenVertices():
+        
+        for vertexGroup in hiddenVertex.groups:
+            
+            if object.vertex_groups[vertexGroup.group] not in hiddenVertexGroups:
+                
+                hiddenVertexGroups.append(object.vertex_groups[vertexGroup.group])
+                    
+    return hiddenVertexGroups
+
+
+
 def getHiddenBones(boneType):
     
     if boneType == "EDIT_ARMATURE":
@@ -102,6 +130,12 @@ def getHiddenItems(scene, context):
         hiddenGroups = [(item.name, item.name, bpy.context.mode+" Bone Group") for item in getHiddenBoneGroups(bpy.context.mode)]
         
         hiddenObjects = [(item.name, item.name, bpy.context.mode+" Bone") for item in getHiddenBones(bpy.context.mode)]
+        
+    elif bpy.context.mode == "EDIT_MESH":
+        
+        hiddenGroups = [(item.name, item.name, bpy.context.mode+" Group") for item in getHiddenVertexGroups()]
+        
+        hiddenObjects = []
 
     return hiddenObjects + hiddenGroups
 
@@ -129,9 +163,9 @@ class UnhideSearch(bpy.types.Operator):
                 
             bpy.ops.object.show(type=itemType, itemName=self.hiddenItems)
             
-        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE"]:
+        elif bpy.context.mode in ["EDIT_ARMATURE", "POSE", "EDIT_MESH"]:
                         
-            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, armature=bpy.context.active_object.name)        
+            bpy.ops.object.show(type=itemType, itemName=self.hiddenItems, object=bpy.context.active_object.name)        
             
         return {'FINISHED'}
 
@@ -152,7 +186,7 @@ class UnhideObject(bpy.types.Operator):
     itemName = bpy.props.StringProperty()
     type = bpy.props.StringProperty()
     unHideAll = bpy.props.BoolProperty(default=False)
-    armature = bpy.props.StringProperty()
+    object = bpy.props.StringProperty()
 
     def execute(self, context):
         
@@ -183,14 +217,14 @@ class UnhideObject(bpy.types.Operator):
                     
         elif self.type == "EDIT_ARMATURE Bone":
             
-            armature = bpy.data.objects[self.armature].data
+            armature = bpy.data.objects[self.object].data
             armature.edit_bones[self.itemName].hide = False
             armature.edit_bones[self.itemName].select = True
             armature.edit_bones.active = armature.edit_bones[self.itemName]
                  
         elif self.type == "EDIT_ARMATURE Bone Group":
             
-            armature = bpy.data.objects[self.armature]
+            armature = bpy.data.objects[self.object]
                         
             for bone in getHiddenBones("EDIT_ARMATURE"):
             
@@ -201,14 +235,14 @@ class UnhideObject(bpy.types.Operator):
                     
         elif self.type == "POSE Bone":
             
-            armature = bpy.data.objects[self.armature].data
+            armature = bpy.data.objects[self.object].data
             armature.bones[self.itemName].hide = False
             armature.bones[self.itemName].select = True
             armature.bones.active = armature.bones[self.itemName]
             
         elif self.type == "POSE Bone Group":
             
-            armature = bpy.data.objects[self.armature]
+            armature = bpy.data.objects[self.object]
                         
             for bone in getHiddenBones("POSE"):
             
@@ -217,7 +251,50 @@ class UnhideObject(bpy.types.Operator):
                     bone.hide = False
                     bone.select = True            
         
-        
+        elif self.type == "EDIT_MESH Group":
+            
+            bpy.ops.object.mode_set(mode = 'OBJECT')
+            
+            object = bpy.data.objects[self.object]
+                                                        
+            for hiddenVertex in getHiddenVertices():
+                
+                for vertexGroup in hiddenVertex.groups:
+                    
+                    if object.vertex_groups[self.itemName].index == vertexGroup.group:
+                        
+                        hiddenVertex.hide = False
+                        
+                        break
+                                        
+            for edge in object.data.edges:
+                
+                vertex1 = edge.vertices[0]
+                vertex2 = edge.vertices[1]
+                    
+                if not object.data.vertices[vertex1].hide and not object.data.vertices[vertex2].hide:
+                    
+                    edge.hide = False
+                    
+            for face in object.data.polygons:
+                
+                hidden = False
+                
+                for vertex in face.vertices:
+                    
+                    if object.data.vertices[vertex].hide:
+                        
+                         hidden = True
+                         
+                         break
+                     
+                if not hidden:
+                    
+                    face.hide = False
+                                    
+            bpy.ops.object.mode_set(mode = 'EDIT')
+                    
+                    
         return {'FINISHED'}
 
 
@@ -272,7 +349,7 @@ class UnhideByTypeMenu(bpy.types.Menu):
                 operator = row.operator("object.show", text=hiddenBone.name)
                 operator.itemName = hiddenBone.name
                 operator.type = bpy.context.mode+" Bone"
-                operator.armature = bpy.context.active_object.name
+                operator.object = bpy.context.active_object.name
 
                 
         
@@ -287,6 +364,8 @@ class UnhideMenu(bpy.types.Menu):
                         
         col = split.column()
         
+        hiddenVertices = []
+        
         if bpy.context.mode == "OBJECT":
                                 
             hiddenObjects = getHiddenObjects()
@@ -296,9 +375,16 @@ class UnhideMenu(bpy.types.Menu):
             
             hiddenObjects = getHiddenBones(bpy.context.mode)
             hiddenGroups = getHiddenBoneGroups(bpy.context.mode)
+            
+        elif bpy.context.mode == "EDIT_MESH":
+            
+            hiddenGroups = getHiddenVertexGroups()
+            hiddenObjects = [] #Edit mdoe doesn't have hidden objects
+            hiddenVertices = getHiddenVertices()
+                                                   
                         
         row = col.row()
-        if len(hiddenObjects) > 0:
+        if len(hiddenObjects) > 0 or len(hiddenVertices) > 0:
 
             if bpy.context.mode == "OBJECT":
                 
@@ -318,7 +404,16 @@ class UnhideMenu(bpy.types.Menu):
                 
                 row.operator("pose.reveal", text="Unhide all bones", icon="RESTRICT_VIEW_OFF")
                 row = col.row()
-                operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")    
+                operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")   
+                
+            elif bpy.context.mode == "EDIT_MESH":
+                
+                row.operator("mesh.reveal", text="Unhide all vertices", icon="RESTRICT_VIEW_OFF")
+                
+                if len(hiddenGroups) > 0:
+                
+                    row = col.row()
+                    operator = row.operator("object.unhide_search", text="Search", icon="VIEWZOOM")     
                         
         else:
             
@@ -330,11 +425,34 @@ class UnhideMenu(bpy.types.Menu):
                 
                 row.label(text="No hidden bones or bone groups")
                 
+            elif bpy.context.mode == "EDIT_MESH":
                 
+                row.label(text="No hidden vertices")
+                
+                            
         if len(hiddenGroups) > 0:
+
             col.separator()            
             row = col.row()
+
+            #This should change depending on mode, e.g. hidden vertex groups
             row.label(text="Hidden groups:")
+            
+        else:
+            
+            if bpy.context.mode == "EDIT_MESH":
+                
+                if len(hiddenVertices) > 0:
+                    
+                    col.separator()            
+                    row = col.row()
+                    row.label(text="No hidden groups")
+                    
+            elif len(hiddenObjects) > 0:
+                
+                col.separator()            
+                row = col.row()
+                row.label(text="No hidden groups")  
             
 
         for hiddenGroup in hiddenGroups:
@@ -352,7 +470,14 @@ class UnhideMenu(bpy.types.Menu):
                 operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP_BONE")
                 operator.itemName = hiddenGroup.name    
                 operator.type = bpy.context.mode+" Bone Group"
-                operator.armature = bpy.context.active_object.name
+                operator.object = bpy.context.active_object.name
+                
+            elif bpy.context.mode == "EDIT_MESH":
+                
+                operator = row.operator("object.show", text=hiddenGroup.name, icon="GROUP_VERTEX")
+                operator.itemName = hiddenGroup.name    
+                operator.type = bpy.context.mode+" Group"
+                operator.object = bpy.context.active_object.name
                 
               
         if len(hiddenObjects) > 0:
@@ -403,6 +528,11 @@ def register():
     kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
     kmi.properties.name = 'view3d.unhide_menu'
     keymaps.append((km, kmi))
+    
+    km = wm.keyconfigs.addon.keymaps.new(name='Mesh', space_type='EMPTY')
+    kmi = km.keymap_items.new('wm.call_menu', 'H', 'PRESS', alt=True)
+    kmi.properties.name = 'view3d.unhide_menu'
+    keymaps.append((km, kmi))    
         
 
 
