@@ -228,10 +228,12 @@ class UnhideObject(bpy.types.Operator):
                         
             for bone in getHiddenBones("EDIT_ARMATURE"):
             
-                if armature.pose.bones[bone.name].bone_group.name == self.itemName:
-                
-                    bone.hide = False
-                    bone.select = True
+                if armature.pose.bones[bone.name].bone_group:
+            
+                    if armature.pose.bones[bone.name].bone_group.name == self.itemName:
+                    
+                        bone.hide = False
+                        bone.select = True
                     
         elif self.type == "POSE Bone":
             
