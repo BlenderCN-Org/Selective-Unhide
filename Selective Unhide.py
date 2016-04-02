@@ -23,7 +23,7 @@ bl_info = {
     "name": "Selective Unhide",
     "description": "Selectively unhide objects instead of unhiding all objects at once",
     "author": "Ray Mairlot",
-    "version": (1, 0),
+    "version": (1, 3),
     "blender": (2, 76, 0),
     "location": "3D View> Alt + H",
     "category": "3D View"}
