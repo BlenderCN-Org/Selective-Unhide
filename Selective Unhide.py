@@ -29,6 +29,15 @@ bl_info = {
     "category": "3D View"}
 
 
+class UnhideAllIgnoreListPropertiesGroup(bpy.types.PropertyGroup):
+    
+    name = bpy.props.StringProperty()
+    
+bpy.utils.register_class(UnhideAllIgnoreListPropertiesGroup)
+
+bpy.types.Scene.unhide_all_ignore_list = bpy.props.CollectionProperty(type=UnhideAllIgnoreListPropertiesGroup)
+
+
 
 def getHiddenVertices():
     
@@ -138,6 +147,20 @@ def getHiddenItems(scene, context):
         hiddenObjects = []
 
     return hiddenObjects + hiddenGroups
+
+
+
+class UnhideAddToIgnoreList(bpy.types.Operator):
+    """Add the object to a list of objects that will ignore the Unhide All command"""
+    bl_idname = "object.unhide_add_to_ignore_list"
+    bl_label = "Add object to Unhide ignore list"
+
+
+    def execute(self, context):
+        
+ 
+            
+        return {'FINISHED'}
 
 
 
