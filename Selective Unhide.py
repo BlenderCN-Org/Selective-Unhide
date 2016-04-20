@@ -153,12 +153,23 @@ def getHiddenItems(scene, context):
 class UnhideAddToIgnoreList(bpy.types.Operator):
     """Add the object to a list of objects that will ignore the Unhide All command"""
     bl_idname = "object.unhide_add_to_ignore_list"
-    bl_label = "Add object to Unhide ignore list"
+    bl_label = "Add object to Unhide All ignore list"
 
 
     def execute(self, context):
         
- 
+        if len(bpy.context.selected_objects) > 0:    
+           
+           for object in bpy.context.selected_objects:
+                
+                if object.name not in bpy.context.scene.unhide_all_ignore_list:
+                
+                    ignoredObject = bpy.context.scene.unhide_all_ignore_list.add()
+                    ignoredObject.name = object.name
+                
+        else:
+            
+            self.report({'ERROR'}, 'No objects selected')
             
         return {'FINISHED'}
 
@@ -198,6 +209,23 @@ class UnhideSearch(bpy.types.Operator):
         wm.invoke_search_popup(self)
         return {'FINISHED'}
 
+
+
+class UnhideAllObjects(bpy.types.Operator):
+    """Unhide all objects"""
+    bl_idname = "object.unhide_all_objects"
+    bl_label = "Unhide all obejcts"
+
+    def execute(self, context):
+        
+        for object in bpy.context.scene.objects:
+            
+            if object.hide and object.name not in bpy.context.scene.unhide_all_ignore_list:
+                
+                object.hide = False 
+            
+        return {'FINISHED'}
+    
 
 
 class UnhideObject(bpy.types.Operator):
@@ -415,7 +443,7 @@ class UnhideMenu(bpy.types.Menu):
 
             if bpy.context.mode == "OBJECT":
                 
-                row.operator("object.hide_view_clear", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
+                row.operator("object.unhide_all_objects", text="Unhide all objects", icon="RESTRICT_VIEW_OFF")
                 row = col.row()
                 row.menu(UnhideAllByTypeMenu.bl_idname, text="Unhide all by type", icon="FILTER")
                 row = col.row()
