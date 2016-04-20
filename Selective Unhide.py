@@ -150,11 +150,35 @@ def getHiddenItems(scene, context):
 
 
 
+class UnhideRemoveFromIgnoreList(bpy.types.Operator):
+    """Remove the object from the list of objects that will ignore the Unhide All command"""
+    bl_idname = "object.unhide_remove_from_ignore_list"
+    bl_label = "Remove object from Unhide All ignore list"
+
+    def execute(self, context):
+        
+        if len(bpy.context.selected_objects) > 0:    
+           
+           for object in bpy.context.selected_objects:
+                
+                for index, ignoredObject in enumerate(bpy.context.scene.unhide_all_ignore_list):
+                    
+                    if object.name == ignoredObject.name:
+                        
+                        bpy.context.scene.unhide_all_ignore_list.remove(index)
+                
+        else:
+            
+            self.report({'ERROR'}, 'No objects selected')
+            
+        return {'FINISHED'}
+
+
+
 class UnhideAddToIgnoreList(bpy.types.Operator):
     """Add the object to a list of objects that will ignore the Unhide All command"""
     bl_idname = "object.unhide_add_to_ignore_list"
     bl_label = "Add object to Unhide All ignore list"
-
 
     def execute(self, context):
         
